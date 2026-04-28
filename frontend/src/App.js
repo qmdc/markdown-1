@@ -4,6 +4,8 @@ import Toolbar from './components/Toolbar';
 import NoteList from './components/NoteList';
 import { noteApi, exportApi } from './services/api';
 import { Edit, Eye, Menu, X } from 'lucide-react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 const App = () => {
   const [title, setTitle] = useState('未命名笔记');
@@ -298,8 +300,86 @@ function hello() {
     }
   };
 
-  const handleExportPdf = () => {
-    alert('PDF 导出功能需要后端 iText 支持，请确保后端服务已启动。\n\n或者您可以使用浏览器的打印功能 (Ctrl+P) 选择"保存为 PDF"来实现导出。');
+  const handleExportPdf = async () => {
+    try {
+      const response = await exportApi.exportToPdf(title, content);
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${title || 'untitled'}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (backendError) {
+      console.log('Backend PDF export failed, trying frontend fallback:', backendError);
+      
+      try {
+        const previewPanel = document.querySelector('.markdown-preview');
+        if (!previewPanel) {
+          alert('未找到预览内容，请确保内容不为空');
+          return;
+        }
+        
+        const originalOverflow = previewPanel.style.overflow;
+        const originalHeight = previewPanel.style.height;
+        previewPanel.style.overflow = 'visible';
+        previewPanel.style.height = 'auto';
+        
+        const canvas = await html2canvas(previewPanel, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff',
+          allowTaint: true,
+        });
+        
+        previewPanel.style.overflow = originalOverflow;
+        previewPanel.style.height = originalHeight;
+        
+        const imgData = canvas.toDataURL('image/png');
+        
+        const pdf = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4',
+        });
+        
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const margin = 10;
+        
+        const imgWidth = pageWidth - (margin * 2);
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        
+        pdf.setFontSize(18);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(title, margin, 15);
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(new Date().toLocaleDateString('zh-CN'), margin, 22);
+        
+        let position = 30;
+        let heightLeft = imgHeight;
+        
+        pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+        heightLeft -= (pageHeight - position);
+        
+        while (heightLeft > 0) {
+          position = heightLeft - imgHeight + margin;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
+        }
+        
+        pdf.save(`${title || 'untitled'}.pdf`);
+        
+      } catch (frontendError) {
+        console.error('Failed to export PDF:', frontendError);
+        alert(`导出 PDF 失败\n\n后端错误: ${backendError.message}\n前端错误: ${frontendError.message}\n\n您可以尝试使用浏览器的打印功能 (Ctrl+P) 选择"保存为 PDF"来实现导出。`);
+      }
+    }
   };
 
   const toggleSidebar = () => {
