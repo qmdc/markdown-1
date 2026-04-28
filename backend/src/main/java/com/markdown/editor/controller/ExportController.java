@@ -34,6 +34,21 @@ public class ExportController {
                 .body(htmlBytes);
     }
     
+    @PostMapping("/pdf")
+    public ResponseEntity<byte[]> exportToPdf(@RequestBody Map<String, String> request) {
+        String title = request.getOrDefault("title", "Untitled");
+        String content = request.getOrDefault("content", "");
+        
+        byte[] pdfBytes = exportService.exportToPdf(title, content);
+        
+        String filename = URLEncoder.encode(title, StandardCharsets.UTF_8) + ".pdf";
+        
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + filename)
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdfBytes);
+    }
+    
     @PostMapping("/preview")
     public ResponseEntity<Map<String, String>> previewHtml(@RequestBody Map<String, String> request) {
         String title = request.getOrDefault("title", "Untitled");

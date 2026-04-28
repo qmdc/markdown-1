@@ -20,6 +20,7 @@ export const noteApi = {
 
 export const exportApi = {
   exportToHtml: (title, content) => api.post('/export/html', { title, content }, { responseType: 'blob' }),
+  exportToPdf: (title, content) => api.post('/export/pdf', { title, content }, { responseType: 'blob' }),
   previewHtml: (title, content) => api.post('/export/preview', { title, content }),
 };
 

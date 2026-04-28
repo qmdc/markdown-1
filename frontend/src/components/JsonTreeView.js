@@ -1,6 +1,23 @@
 import React, { useState } from 'react';
 import { ChevronRight, ChevronDown } from 'lucide-react';
 
+const COLORS = {
+  background: '#1e1e1e',
+  text: '#d4d4d4',
+  key: '#9cdcfe',
+  string: '#ce9178',
+  number: '#b5cea8',
+  boolean: '#569cd6',
+  null: '#569cd6',
+  undefined: '#808080',
+  bracket: '#ffd700',
+  toggle: '#858585',
+  toggleHover: '#d4d4d4',
+  ellipsis: '#858585',
+  comma: '#d4d4d4',
+  colon: '#d4d4d4',
+};
+
 const JsonTreeView = ({ data, initialCollapsed = false }) => {
   const [collapsedNodes, setCollapsedNodes] = useState(() => {
     if (!initialCollapsed) return new Set();
@@ -22,6 +39,8 @@ const JsonTreeView = ({ data, initialCollapsed = false }) => {
     return collapsed;
   });
 
+  const [hoveredToggle, setHoveredToggle] = useState(null);
+
   const toggleNode = (key) => {
     setCollapsedNodes(prev => {
       const next = new Set(prev);
@@ -38,37 +57,77 @@ const JsonTreeView = ({ data, initialCollapsed = false }) => {
     const fullKey = path ? `${path}.${key}` : String(key);
     
     if (value === null) {
-      return <span className="json-null">null</span>;
+      return (
+        <span style={{ color: COLORS.null, fontFamily: "'JetBrains Mono', monospace" }}>
+          null
+        </span>
+      );
     }
     
     if (typeof value === 'object') {
       const isArray = Array.isArray(value);
       const isCollapsed = collapsedNodes.has(fullKey);
-      const hasChildren = isArray ? value.length > 0 : Object.keys(value).length > 0;
+      const entries = isArray ? value : Object.entries(value);
+      const hasChildren = entries.length > 0;
       
       return (
-        <div className="json-object">
+        <div style={{ display: 'inline' }}>
           <span 
-            className="json-toggle" 
             onClick={() => hasChildren && toggleNode(fullKey)}
-            style={{ cursor: hasChildren ? 'pointer' : 'default' }}
+            onMouseEnter={() => setHoveredToggle(fullKey)}
+            onMouseLeave={() => setHoveredToggle(null)}
+            style={{ 
+              cursor: hasChildren ? 'pointer' : 'default',
+              display: 'inline-flex',
+              alignItems: 'center',
+              marginRight: '4px',
+              color: hoveredToggle === fullKey ? COLORS.toggleHover : COLORS.toggle,
+              transition: 'color 0.2s',
+            }}
           >
-            {hasChildren ? (isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />) : null}
+            {hasChildren ? (
+              isCollapsed ? 
+                <ChevronRight size={14} style={{ verticalAlign: 'middle' }} /> : 
+                <ChevronDown size={14} style={{ verticalAlign: 'middle' }} />
+            ) : null}
           </span>
-          <span className="json-bracket">{isArray ? '[' : '{'}</span>
+          <span style={{ 
+            color: COLORS.bracket, 
+            fontFamily: "'JetBrains Mono', monospace" 
+          }}>
+            {isArray ? '[' : '{'}
+          </span>
           {!isCollapsed && hasChildren && (
-            <div className="json-children">
-              {(isArray ? value : Object.entries(value)).map((item, index) => {
+            <div style={{ marginLeft: '24px' }}>
+              {entries.map((item, index) => {
                 const [childKey, childValue] = isArray ? [index, item] : item;
+                const isLast = index === entries.length - 1;
                 return (
-                  <div key={childKey} className="json-item">
+                  <div key={childKey} style={{ display: 'block' }}>
                     {!isArray && (
-                      <span className="json-key">"{childKey}"</span>
+                      <span style={{ 
+                        color: COLORS.key, 
+                        fontFamily: "'JetBrains Mono', monospace" 
+                      }}>
+                        "{childKey}"
+                      </span>
                     )}
-                    {!isArray && <span className="json-colon">: </span>}
+                    {!isArray && (
+                      <span style={{ 
+                        color: COLORS.colon, 
+                        fontFamily: "'JetBrains Mono', monospace" 
+                      }}>
+                        : 
+                      </span>
+                    )}
                     {renderValue(childValue, childKey, fullKey)}
-                    {(isArray ? index < value.length - 1 : index < Object.entries(value).length - 1) && (
-                      <span className="json-comma">,</span>
+                    {!isLast && (
+                      <span style={{ 
+                        color: COLORS.comma, 
+                        fontFamily: "'JetBrains Mono', monospace" 
+                      }}>
+                        ,
+                      </span>
                     )}
                   </div>
                 );
@@ -76,108 +135,81 @@ const JsonTreeView = ({ data, initialCollapsed = false }) => {
             </div>
           )}
           {isCollapsed && hasChildren && (
-            <span className="json-ellipsis">...</span>
+            <span style={{ 
+              color: COLORS.ellipsis, 
+              padding: '0 4px',
+              fontFamily: "'JetBrains Mono', monospace" 
+            }}>
+              ...
+            </span>
           )}
-          <span className="json-bracket">{isArray ? ']' : '}'}</span>
+          <span style={{ 
+            color: COLORS.bracket, 
+            fontFamily: "'JetBrains Mono', monospace" 
+          }}>
+            {isArray ? ']' : '}'}
+          </span>
         </div>
       );
     }
     
     if (typeof value === 'string') {
-      return <span className="json-string">"{value}"</span>;
+      return (
+        <span style={{ 
+          color: COLORS.string, 
+          fontFamily: "'JetBrains Mono', monospace" 
+        }}>
+          "{value}"
+        </span>
+      );
     }
     
     if (typeof value === 'number') {
-      return <span className="json-number">{value}</span>;
+      return (
+        <span style={{ 
+          color: COLORS.number, 
+          fontFamily: "'JetBrains Mono', monospace" 
+        }}>
+          {value}
+        </span>
+      );
     }
     
     if (typeof value === 'boolean') {
-      return <span className="json-boolean">{value.toString()}</span>;
+      return (
+        <span style={{ 
+          color: COLORS.boolean, 
+          fontFamily: "'JetBrains Mono', monospace" 
+        }}>
+          {value.toString()}
+        </span>
+      );
     }
     
-    return <span className="json-undefined">undefined</span>;
+    return (
+      <span style={{ 
+        color: COLORS.undefined, 
+        fontFamily: "'JetBrains Mono', monospace" 
+      }}>
+        undefined
+      </span>
+    );
   };
 
   return (
-    <div className="json-tree-view">
+    <div style={{
+      fontFamily: "'JetBrains Mono', 'SFMono-Regular', Consolas, monospace",
+      fontSize: '13px',
+      lineHeight: '1.5',
+      padding: '16px',
+      background: COLORS.background,
+      color: COLORS.text,
+      borderRadius: '6px',
+      overflowX: 'auto',
+      width: '100%',
+      boxSizing: 'border-box',
+    }}>
       {renderValue(data, '', '')}
-      <style jsx>{`
-        .json-tree-view {
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 13px;
-          line-height: 1.5;
-          padding: 16px;
-          background: #1e1e1e;
-          color: #d4d4d4;
-          border-radius: 6px;
-          overflow-x: auto;
-        }
-        
-        .json-object {
-          display: inline;
-        }
-        
-        .json-toggle {
-          display: inline-flex;
-          align-items: center;
-          margin-right: 4px;
-          color: #858585;
-          transition: color 0.2s;
-        }
-        
-        .json-toggle:hover {
-          color: #d4d4d4;
-        }
-        
-        .json-children {
-          margin-left: 24px;
-        }
-        
-        .json-item {
-          display: block;
-        }
-        
-        .json-key {
-          color: #9cdcfe;
-        }
-        
-        .json-string {
-          color: #ce9178;
-        }
-        
-        .json-number {
-          color: #b5cea8;
-        }
-        
-        .json-boolean {
-          color: #569cd6;
-        }
-        
-        .json-null {
-          color: #569cd6;
-        }
-        
-        .json-undefined {
-          color: #808080;
-        }
-        
-        .json-bracket {
-          color: #ffd700;
-        }
-        
-        .json-colon {
-          color: #d4d4d4;
-        }
-        
-        .json-comma {
-          color: #d4d4d4;
-        }
-        
-        .json-ellipsis {
-          color: #858585;
-          padding: 0 4px;
-        }
-      `}</style>
     </div>
   );
 };
